@@ -1,6 +1,7 @@
 import React, {useState, useEffect, useCallback} from "react";
 import CharacterCard from "./CharacterCard";
 import PaginationControls from "./PaginationControls";
+import SearchBar from "./SearchBar";
 
 const API_URL = 'https://rickandmortyapi.com/api/character/';
 
@@ -10,11 +11,16 @@ function RickAndMortyCharacters() {
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [paginationInfo, setPaginationInfo] = useState(null);
+    const [searchTerm, setSearchTerm] = useState("");
 
     const fetchCharacters = useCallback(async () => {
         setLoading(true);
         setError(null);
         let url = `${API_URL}?page=${currentPage}`;
+        if (searchTerm) {
+            url = `${API_URL}?name=${searchTerm}`;
+        }
+
         try {
             const response = await fetch(url);
             if (!response.ok) {
@@ -25,11 +31,18 @@ function RickAndMortyCharacters() {
                     setLoading(false);
                     return;
                 }
+                if(response.status === 404 && searchTerm) {
+                    setCharacters([]);
+                    setLoading(false);
+                    return;
+                }
                 throw new Error(`Error HTTP: ${response.status}`);
             }
             const data = await response.json();
             setCharacters(data.results || []);
-            setPaginationInfo(data.info);
+            if(!searchTerm) {
+                setPaginationInfo(data.info);
+            }
         } 
         catch (err) {
             console.error("Error al obtener personajes: ", err);
@@ -39,7 +52,7 @@ function RickAndMortyCharacters() {
         } finally {
             setLoading(false);
         }
-    }, [currentPage]);
+    }, [currentPage, searchTerm]);
 
     const appContainerStyle = {
         fontFamily: 'Arial, sans-serif',
@@ -86,9 +99,17 @@ function RickAndMortyCharacters() {
         }
     }
 
+    const handleSearch = (newSearchTerm) => {
+        if(newSearchTerm !== searchTerm) {
+            setSearchTerm(newSearchTerm);
+            setCharacters([]);
+        }
+    }
+
     return (
         <div style={appContainerStyle}>
             <h1>Personajes De Rick And Morty</h1>
+            <SearchBar onSearch={handleSearch} />
             <div style={characterGridStyle}>
                 {characters.map((character) => (
                     <CharacterCard 
